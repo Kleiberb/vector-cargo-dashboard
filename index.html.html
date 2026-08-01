@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VECTOR CARGO — Centro de Operaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg-0:#05090c; --bg-1:#0a1319; --bg-2:#0e1a21; --line:#16262c;
+    --amber:#ffb020; --amber-dim:#8a6a2f; --teal:#4f9d8a; --red:#ff5a40;
+    --text:#d7e6ea; --muted:#5f7680; --white:#f3f7f8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 8%, rgba(79,157,138,0.07), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(255,176,32,0.06), transparent 40%),
+      var(--bg-0);
+    color:var(--text); font-family:'Inter',sans-serif; min-height:100vh;
+    padding:22px; font-size:14px;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .disp{font-family:'Oswald',sans-serif;}
+
+  /* ---------- top bar ---------- */
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:20px;
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-mark{
+    width:44px; height:44px; border:2px solid var(--amber); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-weight:700; color:var(--amber); font-size:16px;
+  }
+  .brand-name{font-family:'Oswald',sans-serif; font-weight:600; font-size:22px; letter-spacing:1px; color:var(--white);}
+  .brand-sub{font-size:11px; letter-spacing:3px; color:var(--muted); margin-top:2px;}
+  .status-cluster{display:flex; gap:26px; align-items:center;}
+  .status-item{text-align:right;}
+  .status-item .lbl{font-size:10px; letter-spacing:2px; color:var(--muted);}
+  .status-item .val{font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--text);}
+  .live-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--teal); display:inline-block;
+    box-shadow:0 0 8px var(--teal); animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+
+  /* ---------- layout grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: 230px 1fr 300px;
+    grid-template-rows: auto auto;
+    gap:16px;
+  }
+  .panel{
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--line); border-radius:8px; padding:16px;
+  }
+  .panel-title{
+    font-size:11px; letter-spacing:2px; color:var(--teal); margin-bottom:12px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+
+  /* ---------- kpi column ---------- */
+  .kpi-col{display:flex; flex-direction:column; gap:14px;}
+  .kpi-card{
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--line); border-left:3px solid var(--amber);
+    border-radius:6px; padding:14px 16px;
+  }
+  .kpi-card.alt{border-left-color:var(--teal);}
+  .kpi-lbl{font-size:10px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase;}
+  .kpi-val{font-family:'Oswald',sans-serif; font-size:32px; font-weight:600; color:var(--white); margin-top:4px;}
+  .kpi-delta{font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:4px;}
+  .up{color:var(--teal);} .down{color:var(--red);}
+
+  /* ---------- center column ---------- */
+  .center-col{display:flex; flex-direction:column; gap:16px;}
+  .chart-wrap{height:230px; position:relative;}
+  .two-col-charts{display:grid; grid-template-columns:1.3fr 1fr; gap:16px;}
+
+  /* gauge */
+  .gauge-row{display:flex; align-items:center; gap:20px;}
+  .gauge-num{font-family:'Oswald',sans-serif; font-size:40px; color:var(--white);}
+  .gauge-cap{font-size:11px; color:var(--muted); letter-spacing:1px; margin-top:2px;}
+
+  /* ---------- right column: routes + alerts ---------- */
+  .right-col{display:flex; flex-direction:column; gap:16px;}
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{
+    text-align:left; font-size:10px; letter-spacing:1px; color:var(--muted);
+    font-weight:500; padding-bottom:8px; border-bottom:1px solid var(--line);
+  }
+  td{padding:8px 0; border-bottom:1px solid rgba(22,38,44,0.6); font-family:'JetBrains Mono',monospace;}
+  .route{color:var(--white); font-family:'Inter',sans-serif; font-size:12.5px;}
+  .badge{
+    font-size:10px; padding:2px 8px; border-radius:10px; letter-spacing:0.5px;
+    font-family:'Inter',sans-serif;
+  }
+  .badge.ontime{background:rgba(79,157,138,0.15); color:var(--teal);}
+  .badge.delay{background:rgba(255,90,64,0.15); color:var(--red);}
+  .badge.board{background:rgba(255,176,32,0.15); color:var(--amber);}
+
+  .alert{
+    display:flex; gap:10px; padding:10px 0; border-bottom:1px solid rgba(22,38,44,0.6);
+  }
+  .alert:last-child{border-bottom:none;}
+  .alert-dot{width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0;}
+  .alert-dot.warn{background:var(--amber);} .alert-dot.crit{background:var(--red);} .alert-dot.info{background:var(--teal);}
+  .alert-text{font-size:12px; line-height:1.4;}
+  .alert-time{font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); margin-top:2px;}
+
+  /* ---------- ticker ---------- */
+  .ticker-wrap{
+    grid-column:1 / -1; overflow:hidden; border:1px solid var(--line); border-radius:8px;
+    background:var(--bg-1); padding:10px 0; margin-top:16px; position:relative;
+  }
+  .ticker-track{display:flex; gap:50px; white-space:nowrap; animation:scroll 32s linear infinite; width:max-content;}
+  .ticker-item{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);}
+  .ticker-item b{color:var(--amber);}
+  @keyframes scroll{from{transform:translateX(0);} to{transform:translateX(-50%);}}
+
+  footer{
+    text-align:center; margin-top:20px; font-size:11px; color:var(--muted); letter-spacing:1px;
+  }
+  footer a{color:var(--teal); text-decoration:none;}
+
+  @media (max-width: 980px){
+    .grid{grid-template-columns:1fr;}
+    .two-col-charts{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">VC</div>
+    <div>
+      <div class="brand-name">VECTOR CARGO</div>
+      <div class="brand-sub disp">CENTRO DE OPERACIONES · CARGA AÉREA</div>
+    </div>
+  </div>
+  <div class="status-cluster">
+    <div class="status-item">
+      <div class="lbl">ESTADO</div>
+      <div class="val"><span class="live-dot"></span> OPERATIVO</div>
+    </div>
+    <div class="status-item">
+      <div class="lbl">TURNO</div>
+      <div class="val" id="clock">--:--:--</div>
+    </div>
+    <div class="status-item">
+      <div class="lbl">FECHA</div>
+      <div class="val" id="today">--</div>
+    </div>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- columna izquierda: KPIs -->
+  <div class="kpi-col">
+    <div class="kpi-card">
+      <div class="kpi-lbl">Puntualidad (OTP)</div>
+      <div class="kpi-val">94.2%</div>
+      <div class="kpi-delta up">▲ 1.8% vs. mes anterior</div>
+    </div>
+    <div class="kpi-card alt">
+      <div class="kpi-lbl">Utilización de flota</div>
+      <div class="kpi-val">81%</div>
+      <div class="kpi-delta up">▲ 3.1%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl">Volumen de carga</div>
+      <div class="kpi-val">3,420<span style="font-size:16px;color:var(--muted)"> ton</span></div>
+      <div class="kpi-delta down">▼ 2.4%</div>
+    </div>
+    <div class="kpi-card alt">
+      <div class="kpi-lbl">Costo combustible</div>
+      <div class="kpi-val">$2.87<span style="font-size:16px;color:var(--muted)">M</span></div>
+      <div class="kpi-delta down">▲ 5.6% (alerta)</div>
+    </div>
+  </div>
+
+  <!-- columna central: gráficos -->
+  <div class="center-col">
+    <div class="panel">
+      <div class="panel-title">
+        <span>PUNTUALIDAD Y VOLUMEN — ÚLTIMOS 12 MESES</span>
+        <span class="mono" style="color:var(--muted)">OTP % · CARGA (ton)</span>
+      </div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="two-col-charts">
+      <div class="panel">
+        <div class="panel-title"><span>VOLUMEN POR RUTA (TOP 6)</span></div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="routeChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>UTILIZACIÓN DE FLOTA</span></div>
+        <div class="gauge-row" style="justify-content:center; height:200px; align-items:center;">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle cx="75" cy="75" r="62" fill="none" stroke="#16262c" stroke-width="14"/>
+            <circle cx="75" cy="75" r="62" fill="none" stroke="#ffb020" stroke-width="14"
+              stroke-dasharray="389.6" stroke-dashoffset="74" stroke-linecap="round"
+              transform="rotate(-90 75 75)"/>
+            <text x="75" y="70" text-anchor="middle" fill="#f3f7f8" font-family="Oswald" font-size="30" font-weight="600">81%</text>
+            <text x="75" y="92" text-anchor="middle" fill="#5f7680" font-family="Inter" font-size="10" letter-spacing="1">22/27 AERONAVES</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- columna derecha: rutas + alertas -->
+  <div class="right-col">
+    <div class="panel">
+      <div class="panel-title"><span>VUELOS — ESTADO ACTUAL</span></div>
+      <table>
+        <thead><tr><th>RUTA</th><th>ETA</th><th>ESTADO</th></tr></thead>
+        <tbody id="routeTable"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>ALERTAS OPERATIVAS</span></div>
+      <div id="alertList"></div>
+    </div>
+  </div>
+
+  <!-- ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+</div>
+
+<footer>
+  Dashboard operativo con datos ficticios · construido con HTML, CSS y Chart.js ·
+  <a href="https://github.com/Kleiberb" target="_blank">github.com/Kleiberb</a>
+</footer>
+
+<script>
+  // ---------- reloj ----------
+  function tick(){
+    const d = new Date();
+    document.getElementById('clock').textContent = d.toLocaleTimeString('es-VE', {hour12:false});
+    document.getElementById('today').textContent = d.toLocaleDateString('es-VE', {day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
+  }
+  tick(); setInterval(tick, 1000);
+
+  // ---------- paleta ----------
+  const AMBER = '#ffb020', TEAL = '#4f9d8a', RED='#ff5a40', MUTED='#5f7680', LINE='#16262c';
+  Chart.defaults.color = '#8ea3ab';
+  Chart.defaults.font.family = "'JetBrains Mono', monospace";
+  Chart.defaults.font.size = 10;
+
+  // ---------- gráfico de tendencia (línea doble eje) ----------
+  const months = ['Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun','Jul'];
+  const otp   = [88,90,91,89,92,90,93,91,94,92,95,94.2];
+  const carga = [2890,3010,3120,2950,3300,3180,3450,3260,3510,3390,3600,3420];
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: 'OTP %', data: otp, borderColor: AMBER, backgroundColor: 'rgba(255,176,32,0.08)',
+          yAxisID: 'y', tension: 0.35, pointRadius: 2, fill: true, borderWidth: 2
+        },
+        {
+          label: 'Carga (ton)', data: carga, borderColor: TEAL, backgroundColor: 'transparent',
+          yAxisID: 'y1', tension: 0.35, pointRadius: 2, borderWidth: 2, borderDash: [4,3]
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 10, color: '#8ea3ab' } } },
+      scales: {
+        x: { grid: { color: LINE } },
+        y: { position: 'left', grid: { color: LINE }, title:{display:true, text:'OTP %', color:MUTED} },
+        y1:{ position: 'right', grid: { drawOnChartArea:false }, title:{display:true, text:'ton', color:MUTED} }
+      }
+    }
+  });
+
+  // ---------- gráfico de rutas (barras) ----------
+  new Chart(document.getElementById('routeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['CCS–MIA','CCS–BOG','CCS–PTY','CCS–MAD','CCS–LIM','CCS–GRU'],
+      datasets: [{
+        data: [820, 690, 540, 460, 390, 310],
+        backgroundColor: [AMBER,'#e0a02c','#c88c2a','#4f9d8a','#3d8a77','#2f7365'],
+        borderRadius: 4, barThickness: 16
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false } },
+      scales: { x: { grid: { color: LINE } }, y: { grid: { display:false } } }
+    }
+  });
+
+  // ---------- tabla de vuelos ----------
+  const flights = [
+    ['VC-104  CCS → MIA','14:20','ontime','A tiempo'],
+    ['VC-221  CCS → BOG','15:05','delay','Retraso 22 min'],
+    ['VC-318  CCS → PTY','16:40','board','Embarcando'],
+    ['VC-402  CCS → MAD','19:10','ontime','A tiempo'],
+    ['VC-556  CCS → LIM','20:35','ontime','A tiempo'],
+    ['VC-071  CCS → GRU','22:00','delay','Retraso 10 min'],
+  ];
+  const tbody = document.getElementById('routeTable');
+  flights.forEach(([route, eta, cls, label]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="route">${route}</td><td>${eta}</td><td><span class="badge ${cls}">${label}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // ---------- alertas ----------
+  const alerts = [
+    ['crit', 'Alza de combustible jet A-1: +5.6% esta semana, revisar cobertura de contratos.', 'Hace 12 min'],
+    ['warn', 'Vuelo VC-221 con retraso por congestión en aeropuerto de destino (BOG).', 'Hace 34 min'],
+    ['info', 'Mantenimiento programado: aeronave VC-07 sale de servicio mañana 06:00.', 'Hace 1 h'],
+    ['warn', 'Volumen de carga en ruta CCS–GRU 15% por debajo del pronóstico mensual.', 'Hace 2 h'],
+  ];
+  const alertList = document.getElementById('alertList');
+  alerts.forEach(([sev, text, time]) => {
+    const div = document.createElement('div');
+    div.className = 'alert';
+    div.innerHTML = `<div class="alert-dot ${sev}"></div><div><div class="alert-text">${text}</div><div class="alert-time">${time}</div></div>`;
+    alertList.appendChild(div);
+  });
+
+  // ---------- ticker inferior ----------
+  const tickerItems = [
+    'VC-104 CCS→MIA A TIEMPO', 'VC-221 CCS→BOG RETRASO 22 MIN', 'VC-318 CCS→PTY EMBARCANDO',
+    'COMBUSTIBLE JET A-1 +5.6%', 'OTP MENSUAL 94.2%', 'FLOTA ACTIVA 22/27',
+    'VC-402 CCS→MAD A TIEMPO', 'CARGA TOTAL 3,420 TON', 'VC-556 CCS→LIM A TIEMPO'
+  ];
+  const track = document.getElementById('tickerTrack');
+  const doubled = [...tickerItems, ...tickerItems];
+  doubled.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'ticker-item';
+    span.innerHTML = `<b>●</b> ${t}`;
+    track.appendChild(span);
+  });
+</script>
+
+</body>
+</html>
